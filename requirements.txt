@@ -1,0 +1,20 @@
+# Core
+streamlit>=1.40.0
+python-dotenv>=1.0.1
+GitPython>=3.1.43
+
+# Agentic / LLM
+langgraph>=0.2.60
+langchain>=0.3.14
+langchain-community>=0.3.14
+langchain-ollama>=0.2.2
+langchain-text-splitters>=0.3.4
+langchain-core>=0.3.29
+
+# RAG
+lancedb>=0.17.0
+pyarrow>=18.0.0
+
+# Dev / quality (optional for local)
+pytest>=8.3.0
+ruff>=0.8.0

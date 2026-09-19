@@ -1,0 +1,8 @@
+[server]
+# External / FUSE mounts often break inotify (Errno 22 Invalid argument).
+# "none" disables auto-reload; restart `make run` after code changes.
+# Use "poll" if you want reload without inotify.
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false
