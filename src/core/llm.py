@@ -49,7 +49,7 @@ def check_ollama_reachable(*, require_models: bool = False) -> None:
             return True
         base = wanted.split(":")[0]
         return any(
-            n == wanted or n.startswith(wanted) or n.startswith(base + ":")
+            n == wanted or n.startswith((wanted, f"{base}:"))
             for n in names
         )
 

@@ -124,8 +124,8 @@ def consolidator_node(state: AuditState) -> dict[str, Any]:
         content = response.content if hasattr(response, "content") else str(response)
         data = parse_llm_json(content)
         if not isinstance(data, dict):
-            raise ValueError("consolidator did not return a JSON object")
-    except Exception:
+            raise TypeError("consolidator did not return a JSON object")
+    except (json.JSONDecodeError, TypeError, OSError, RuntimeError, ValueError):
         data = _fallback_consolidate(reviews)
 
     return {

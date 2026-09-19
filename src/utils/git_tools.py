@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 
 from git import InvalidGitRepositoryError, Repo
+from git.exc import BadName, GitCommandError
 
 
 class GitToolsError(RuntimeError):
@@ -86,13 +87,18 @@ def _abs_paths(root: Path, rels: list[str]) -> list[str]:
     return seen
 
 
+def _commit_exists(repo: Repo, name: str) -> bool:
+    try:
+        repo.commit(name)
+    except (BadName, GitCommandError, ValueError):
+        return False
+    return True
+
+
 def _default_base_ref(repo: Repo) -> str | None:
     for name in ("origin/main", "main", "origin/master", "master"):
-        try:
-            repo.commit(name)
+        if _commit_exists(repo, name):
             return name
-        except Exception:
-            continue
     return None
 
 
