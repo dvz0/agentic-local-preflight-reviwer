@@ -5,6 +5,7 @@ from __future__ import annotations
 import difflib
 import os
 import tempfile
+from contextlib import suppress
 from pathlib import Path
 
 from git import InvalidGitRepositoryError, Repo
@@ -223,11 +224,9 @@ def validate_proposed_fixes(
         _mirror_working_tree(root, mirror, alone_ok)
         mirror_repo = Repo.init(mirror)
         mirror_repo.git.add(A=True)
-        if list(mirror.rglob("*")):
-            try:
+        if mirror_repo.is_dirty(untracked_files=True) or not mirror_repo.head.is_valid():
+            with suppress(GitCommandError, ValueError):
                 mirror_repo.index.commit("mirror")
-            except Exception:  # noqa: BLE001 — apply still works on working tree
-                pass
 
         for fix in alone_ok:
             diff = fix.get("unified_diff") or ""
@@ -273,7 +272,7 @@ def normalize_fix(repo_path: str | Path, fix: dict) -> dict:
         check_unified_diff(repo_path, diff)
         out["unified_diff"] = diff
         return out
-    except Exception:
+    except (GitCommandError, GitToolsError):
         repaired = repair_unified_diff(repo_path, diff, file_hint=rel)
         out["unified_diff"] = repaired
         out["_repaired"] = True
@@ -396,8 +395,7 @@ def paths_from_git_diff(git_diff: str) -> list[str]:
         if line.startswith("diff --git "):
             parts = line.split()
             if len(parts) >= 4:
-                b = parts[3]
-                rel = b[2:] if b.startswith("b/") else b
+                rel = parts[3].removeprefix("b/")
                 if rel not in found:
                     found.append(rel)
         elif line.startswith("+++ b/"):
@@ -420,7 +418,7 @@ def _resolve_fix_relpath(fix: dict) -> str | None:
 
 def _first_path_from_diff(unified_diff: str) -> str | None:
     paths = _paths_touched_by_fixes([{"unified_diff": unified_diff}])
-    return sorted(paths)[0] if paths else None
+    return min(paths) if paths else None
 
 
 def _extract_change_blocks(unified_diff: str) -> tuple[str, str]:
@@ -428,7 +426,7 @@ def _extract_change_blocks(unified_diff: str) -> tuple[str, str]:
     removed: list[str] = []
     added: list[str] = []
     for line in unified_diff.splitlines():
-        if line.startswith("--- ") or line.startswith("+++ "):
+        if line.startswith(("--- ", "+++ ")):
             continue
         if line.startswith("-"):
             removed.append(line[1:])
@@ -454,11 +452,8 @@ def _paths_touched_by_fixes(fixes: list[dict]) -> set[str]:
             if line.startswith("diff --git "):
                 parts = line.split()
                 if len(parts) >= 4:
-                    a_path = parts[2][2:] if parts[2].startswith("a/") else parts[2]
-                    paths.add(a_path)
-            elif line.startswith("+++ b/"):
-                paths.add(line[6:].strip())
-            elif line.startswith("--- a/"):
+                    paths.add(parts[2].removeprefix("a/"))
+            elif line.startswith(("+++ b/", "--- a/")):
                 paths.add(line[6:].strip())
     paths.discard("/dev/null")
     paths.discard("dev/null")

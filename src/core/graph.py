@@ -147,8 +147,7 @@ def consolidator_node(state: AuditState) -> dict[str, Any]:
         file_excerpt += "\n... [file contents truncated] ..."
 
     user_parts = [
-        "## Original git diff\n"
-        f"```diff\n{diff_excerpt}\n```",
+        f"## Original git diff\n```diff\n{diff_excerpt}\n```",
     ]
     if file_excerpt.strip():
         user_parts.append(
