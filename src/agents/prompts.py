@@ -28,7 +28,10 @@ Respond ONLY with valid JSON (no markdown) in this shape:
   ]
 }
 If there are no findings, findings and proposed_patches must be [].
-unified_diff values should be unified patches applicable with git apply when reasonable.
+unified_diff values MUST be valid unified diffs for `git apply`:
+- Copy context lines EXACTLY from the provided diff (including comments).
+- Prefer one small patch that removes or fixes the issue; do not invent files.
+- Do not invent tests for secrets that should simply be removed.
 """
 
 QUALITY_SYSTEM = """You are a senior Python code-quality agent.
@@ -58,6 +61,8 @@ Respond ONLY with valid JSON (no markdown) in this shape:
   ]
 }
 If there are no findings, findings and proposed_patches must be [].
+unified_diff MUST be valid for `git apply`: copy context EXACTLY from the diff;
+prefer one patch; do not invent files. Omit patches if unsure.
 """
 
 TESTING_SYSTEM = """You are a senior Python testing agent.
@@ -87,14 +92,26 @@ Respond ONLY with valid JSON (no markdown) in this shape:
   ]
 }
 If there are no findings, findings and proposed_patches must be [].
+unified_diff MUST be valid for `git apply`: copy context EXACTLY from the diff.
+Do not invent test files for secrets that should simply be removed; omit patches if unsure.
 """
 
 CONSOLIDATOR_SYSTEM = """You are the consolidator for a multi-agent Python PR review.
-You receive three JSON reports (security, quality, testing). You must:
+You receive three JSON reports (security, quality, testing), the original git
+diff, and CURRENT FILE CONTENTS from the working tree. You must:
 1) Remove duplicate or very similar findings.
 2) Unify severities (critical > high > medium > low > info).
 3) Produce a readable English report (markdown in the report field).
 4) Propose a deduplicated list of patches (proposed_fixes).
+
+Hard rules for proposed_fixes:
+- At most ONE fix for the same issue/lines (no delete vs replace conflicts).
+- Prefer removing hardcoded secrets over renaming them or adding tests for them.
+- Only edit paths that appear in the provided git diff (or a clearly related existing test file).
+- Do NOT invent new files or placeholder index hashes (e.g. 1234567).
+- Prefer old_string/new_string copied EXACTLY from CURRENT FILE CONTENTS
+  (unique snippet). unified_diff is optional when old_string/new_string are set.
+- If you cannot produce a faithful fix, omit that fix (empty proposed_fixes is OK).
 
 Respond ONLY with valid JSON (no markdown) in this shape:
 {
@@ -105,7 +122,9 @@ Respond ONLY with valid JSON (no markdown) in this shape:
       "severity": "high",
       "file": "path.py",
       "rationale": "reason",
-      "unified_diff": "diff --git ..."
+      "old_string": "exact text from current file to remove/replace",
+      "new_string": "replacement text (empty string to delete)",
+      "unified_diff": ""
     }
   ],
   "finding_count": 0

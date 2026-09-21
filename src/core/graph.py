@@ -17,7 +17,13 @@ from src.agents.testing import run_test_agent
 from src.core.llm import get_chat_llm
 from src.core.state import AuditState
 from src.rag.retriever import retrieve_context
-from src.utils.git_tools import apply_unified_diff, get_diff_and_files
+from src.utils.git_tools import (
+    apply_unified_diff,
+    file_excerpts_for_prompt,
+    get_diff_and_files,
+    paths_from_git_diff,
+    validate_proposed_fixes,
+)
 
 _checkpointer = MemorySaver()
 _compiled = None
@@ -112,12 +118,47 @@ def consolidator_node(state: AuditState) -> dict[str, Any]:
     llm = get_chat_llm(json_mode=True)
     from src.core import config
 
-    payload = json.dumps(reviews, ensure_ascii=False, indent=2)[
-        : config.MAX_CONSOLIDATOR_CHARS
+    git_diff = state.get("git_diff") or ""
+    repo_path = state.get("repo_path") or ""
+    paths = paths_from_git_diff(git_diff)
+    excerpts = ""
+    if repo_path and paths:
+        try:
+            excerpts = file_excerpts_for_prompt(
+                repo_path, paths, max_chars=max(1500, config.MAX_CONSOLIDATOR_CHARS // 4)
+            )
+        except Exception:  # noqa: BLE001 — consolidator still works without excerpts
+            excerpts = ""
+
+    # Reserve room for the real diff + file contents so fixes can match the tree.
+    excerpt_budget = min(len(excerpts), max(1000, config.MAX_CONSOLIDATOR_CHARS // 4))
+    diff_budget = min(
+        len(git_diff), max(1500, (config.MAX_CONSOLIDATOR_CHARS - excerpt_budget) // 3)
+    )
+    reports_budget = max(
+        800, config.MAX_CONSOLIDATOR_CHARS - diff_budget - excerpt_budget - 300
+    )
+    payload = json.dumps(reviews, ensure_ascii=False, indent=2)[:reports_budget]
+    diff_excerpt = git_diff[:diff_budget]
+    if len(git_diff) > diff_budget:
+        diff_excerpt += "\n... [diff truncated] ..."
+    file_excerpt = excerpts[:excerpt_budget]
+    if len(excerpts) > excerpt_budget:
+        file_excerpt += "\n... [file contents truncated] ..."
+
+    user_parts = [
+        "## Original git diff\n"
+        f"```diff\n{diff_excerpt}\n```",
     ]
+    if file_excerpt.strip():
+        user_parts.append(
+            "## CURRENT FILE CONTENTS (copy old_string from here)\n" + file_excerpt
+        )
+    user_parts.append(f"## Agent reports\n{payload}")
+
     messages = [
         {"role": "system", "content": CONSOLIDATOR_SYSTEM},
-        {"role": "user", "content": f"Agent reports:\n{payload}"},
+        {"role": "user", "content": "\n\n".join(user_parts)},
     ]
     try:
         response = llm.invoke(messages)
@@ -128,10 +169,41 @@ def consolidator_node(state: AuditState) -> dict[str, Any]:
     except (json.JSONDecodeError, TypeError, OSError, RuntimeError, ValueError):
         data = _fallback_consolidate(reviews)
 
+    raw_fixes = data.get("proposed_fixes") or []
+    report = data.get("report", "") or ""
+    errors: list[str] = []
+    if raw_fixes and repo_path:
+        valid, rejected = validate_proposed_fixes(repo_path, raw_fixes)
+        repaired_n = sum(1 for f in valid if f.get("_repaired"))
+        if rejected or repaired_n:
+            kept_msg = (
+                f"Kept {len(valid)}/{len(raw_fixes)} patch(es) "
+                f"(repaired {repaired_n}) after validation.\n"
+            )
+            report = report.rstrip() + "\n\n### Patch validation\n" + kept_msg
+        if rejected:
+            errors.append(
+                "Dropped "
+                f"{len(rejected)}/{len(raw_fixes)} proposed patch(es) "
+                "(failed validation or conflicted): "
+                + "; ".join(rejected)
+            )
+        for fix in valid:
+            fix.pop("_repaired", None)
+        raw_fixes = valid
+    else:
+        raw_fixes = [
+            p
+            for p in raw_fixes
+            if (p.get("unified_diff") or "").strip()
+            or (isinstance(p.get("old_string"), str) and p.get("new_string") is not None)
+        ]
+
     return {
-        "consolidated_report": data.get("report", ""),
-        "proposed_fixes": data.get("proposed_fixes") or [],
+        "consolidated_report": report,
+        "proposed_fixes": raw_fixes,
         "user_approved": False,
+        "errors": errors,
     }
 
 

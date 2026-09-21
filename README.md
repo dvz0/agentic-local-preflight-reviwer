@@ -50,7 +50,7 @@ extract_diff → retrieve_context → (security ‖ quality ‖ test) → consol
 | **security / quality / test** | Three specialist agents (fan-out). Each gets diff + RAG context and returns structured JSON findings / optional patches via Ollama. On one GPU they usually run back-to-back, not truly in parallel. |
 | **consolidator** | Fan-in: merges the three reports, dedupes, severity, unified markdown report + `proposed_fixes`. |
 | **human_approval** | Marker before apply. Streamlit shows the report and waits. |
-| **apply_fixes** | Runs only after you **Approve** or **Reject**. Applies unified diffs with `git apply` when approved. |
+| **apply_fixes** | Runs only after you **Approve** or **Reject**. Applies unified diffs with `git apply` when approved. Broken LLM diffs are repaired from working-tree text when possible; remaining invalid/conflicting patches are dropped before approval. |
 
 **HITL:** the graph is compiled with `MemorySaver` and `interrupt_before=["apply_fixes_node"]`. Streamlit resumes the same thread with `user_approved=True/False`.
 
