@@ -1,5 +1,14 @@
 # Agentic Local Pre-flight Reviewer
 
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)
+![Ollama](https://img.shields.io/badge/LLM-Ollama-000000?logo=ollama&logoColor=white)
+![LangChain](https://img.shields.io/badge/LLM-LangChain-1C3C3C)
+![LangGraph](https://img.shields.io/badge/Agents-LangGraph-1C3C3C)
+![Langfuse](https://img.shields.io/badge/tracing-Langfuse-4B5EFF)
+![LanceDB](https://img.shields.io/badge/RAG-LanceDB-22B8CF)
+![Ruff](https://img.shields.io/badge/lint-Ruff-261230?logo=ruff&logoColor=white)
+
 Local PR review with RAG (LanceDB), LangGraph agents, and human approval in Streamlit. LLMs run via Ollama on the host.
 
 ## Requirements
