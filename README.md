@@ -6,7 +6,6 @@ Local PR review with RAG (LanceDB), LangGraph agents, and human approval in Stre
 
 - Python **3.11 or 3.12** (`make setup` prefers these; avoid 3.14)
 - [Ollama](https://ollama.com) installed and running
-- NVIDIA GPU with ~8–12 GB VRAM for `qwen2.5-coder:7b`
 - A git repository with local changes to audit
 
 ## Quick start
