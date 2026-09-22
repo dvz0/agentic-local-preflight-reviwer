@@ -35,6 +35,7 @@ Copy `.env.example` → `.env` (`make setup` does this):
 | `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Alternative: `mxbai-embed-large` |
 | `LANCEDB_PATH` | `./data/lancedb` | Gitignored |
 | `DEFAULT_REPO_PATH` | (empty) | Prefills the UI |
+| `LANGFUSE_*` | off / localhost:3000 | Optional tracing — see [docs/dev.md](docs/dev.md#optional-langfuse-tracing-dev) |
 
 ## Architecture
 

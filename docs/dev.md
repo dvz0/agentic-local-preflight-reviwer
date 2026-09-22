@@ -54,10 +54,10 @@ local_pr_auditor/
 
 | Path | Role |
 | --- | --- |
-| `app.py` | Thin UI. Index button → `rag.indexer`. Audit button → `core.graph`. Approve/Reject → resume graph. |
+| `app.py` | Thin UI. Index button → `rag.indexer`. Audit button → `core.graph`. Approve/Reject → resume graph. Optional Langfuse toggle in the sidebar. |
 | `data/` | Created at runtime. Do not commit. Safe to delete and re-index. |
 | `tests/` | Git/state helpers, JSON parsing — no live LLM. |
-| `.env` | Local overrides (`OLLAMA_*`, `MAX_DIFF_CHARS`, etc.). |
+| `.env` | Local overrides (`OLLAMA_*`, `MAX_DIFF_CHARS`, `LANGFUSE_*`, etc.). |
 
 ---
 
@@ -98,9 +98,10 @@ Everything the graph needs lives in **`AuditState`** (`core/state.py`): a typed 
 
 | File | What it does |
 | --- | --- |
-| `config.py` | Reads `.env`: Ollama URL/models, LanceDB path, chunk sizes, max prompt sizes. |
+| `config.py` | Reads `.env`: Ollama URL/models, LanceDB path, chunk sizes, max prompt sizes, optional Langfuse keys. |
 | `llm.py` | Builds Ollama chat + embedding clients. Checks the server is up and models exist. Clear errors if not. |
 | `state.py` | `AuditState` definition. `reviews` merges dicts from parallel agents; `errors` appends. |
+| `tracing.py` | Optional Langfuse `CallbackHandler` + soft-fail when keys/host missing. |
 | `graph.py` | Defines nodes and edges. Compiles with `MemorySaver` and `interrupt_before=["apply_fixes_node"]`. Exposes `run_until_approval` / `resume_with_approval` for the UI. |
 
 If you change the pipeline order, you almost always edit **`graph.py`**.
@@ -148,6 +149,7 @@ Classic GitPython / git CLI wrapping — no AI here.
 | --- | --- |
 | UI labels / buttons / flow display | `app.py` |
 | Model name, context size, prompt caps | `.env` / `config.py` |
+| Langfuse host / keys / default toggle | `.env` / `config.py` / `core/tracing.py` |
 | Review criteria or JSON shape | `agents/prompts.py` |
 | Add a fourth reviewer | new file under `agents/` + wire it in `graph.py` |
 | Index other languages | `rag/indexer.py` (+ prompts) |
@@ -161,6 +163,46 @@ Classic GitPython / git CLI wrapping — no AI here.
 - **Ollama** must be running (`ollama serve`).
 - Models from `.env` must be pulled (`make pull-models`).
 - Without GPU, Ollama still runs on **CPU** (slower). This app does not special-case that.
+
+---
+
+## Optional: Langfuse tracing (dev)
+
+Langfuse is **not** bundled. Run it yourself (self-hosted Docker is the usual choice), then point this app at it.
+
+### 1. Start Langfuse (external)
+
+Use the official Compose stack (**v3+** image; older v2 breaks current Python SDKs):
+
+```bash
+git clone --depth=1 https://github.com/langfuse/langfuse.git
+cd langfuse
+docker compose up -d
+```
+
+UI: [http://localhost:3000](http://localhost:3000). Create a project and copy **Public** / **Secret** API keys.
+
+### 2. Configure this app
+
+In `.env` (see `.env.example`):
+
+```bash
+LANGFUSE_ENABLED=false          # only sets the Streamlit checkbox default
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_BASE_URL=http://localhost:3000
+LANGFUSE_TRACING_ENVIRONMENT=development
+```
+
+Reinstall deps if needed: `pip install -r requirements.txt` (includes `langfuse`).
+
+### 3. Use the Streamlit toggle
+
+Sidebar → **Trace with Langfuse**. When on, **Run audit** (and the matching **Approve** / **Reject**) send LangGraph + Ollama spans to Langfuse. The choice is sticky for that audit’s HITL step (`session_id` = LangGraph `thread_id`).
+
+If keys are missing or Langfuse is down, the audit still runs; Streamlit shows a warning and skips tracing.
+
+Code entry points: `src/core/tracing.py`, wired from `run_until_approval` / `resume_with_approval` in `graph.py`.
 
 ---
 

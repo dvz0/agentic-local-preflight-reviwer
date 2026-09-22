@@ -16,6 +16,7 @@ from src.agents.security import run_security_agent
 from src.agents.testing import run_test_agent
 from src.core.llm import get_chat_llm
 from src.core.state import AuditState
+from src.core.tracing import traced_invoke
 from src.rag.retriever import retrieve_context
 from src.utils.git_tools import (
     apply_unified_diff,
@@ -296,38 +297,66 @@ def new_thread_id() -> str:
 
 
 def run_until_approval(
-    repo_path: str, thread_id: str | None = None
-) -> tuple[str, dict, bool]:
+    repo_path: str,
+    thread_id: str | None = None,
+    *,
+    trace: bool = False,
+) -> tuple[str, dict, bool, str | None]:
     """
     Invoke graph until HITL interrupt (or END if no diff).
 
-    Returns (thread_id, state_values, awaiting_approval).
+    Returns (thread_id, state_values, awaiting_approval, trace_warning).
     ``awaiting_approval`` is True only when next node is ``apply_fixes_node``.
+    ``trace_warning`` is set when Langfuse tracing was requested but skipped.
     """
     graph = get_compiled_graph()
     tid = thread_id or new_thread_id()
-    config = {"configurable": {"thread_id": tid}}
-    graph.invoke(
-        {
-            "repo_path": repo_path,
-            "reviews": {},
-            "rag_context": [],
-            "proposed_fixes": [],
-            "user_approved": False,
-            "errors": [],
-        },
-        config=config,
-    )
-    snapshot = graph.get_state(config)
+    with traced_invoke(
+        thread_id=tid,
+        repo_path=repo_path,
+        enabled=trace,
+        run_name="pr-audit",
+        tags=["local-pr-auditor", "audit"],
+    ) as setup:
+        graph.invoke(
+            {
+                "repo_path": repo_path,
+                "reviews": {},
+                "rag_context": [],
+                "proposed_fixes": [],
+                "user_approved": False,
+                "errors": [],
+            },
+            config=setup.config,
+        )
+        snapshot = graph.get_state(setup.config)
     awaiting = "apply_fixes_node" in (snapshot.next or ())
-    return tid, dict(snapshot.values), awaiting
+    return tid, dict(snapshot.values), awaiting, setup.warning
 
 
-def resume_with_approval(thread_id: str, approved: bool) -> dict:
-    """Set user_approved and continue past the interrupt."""
+def resume_with_approval(
+    thread_id: str,
+    approved: bool,
+    *,
+    trace: bool = False,
+) -> tuple[dict, str | None]:
+    """Set user_approved and continue past the interrupt.
+
+    Returns (state_values, trace_warning).
+    """
     graph = get_compiled_graph()
-    config = {"configurable": {"thread_id": thread_id}}
-    graph.update_state(config, {"user_approved": approved})
-    graph.invoke(None, config=config)
-    snapshot = graph.get_state(config)
-    return dict(snapshot.values)
+    base = {"configurable": {"thread_id": thread_id}}
+    prior = graph.get_state(base)
+    repo_path = str((prior.values or {}).get("repo_path") or "")
+    tag = "approval" if approved else "reject"
+    with traced_invoke(
+        thread_id=thread_id,
+        repo_path=repo_path,
+        enabled=trace,
+        run_name=f"pr-audit-{tag}",
+        tags=["local-pr-auditor", tag],
+    ) as setup:
+        graph.update_state(setup.config, {"user_approved": approved})
+        graph.invoke(None, config=setup.config)
+        snapshot = graph.get_state(setup.config)
+    return dict(snapshot.values), setup.warning

@@ -10,6 +10,7 @@ langchain-community>=0.3.14
 langchain-ollama>=0.2.2
 langchain-text-splitters>=0.3.4
 langchain-core>=0.3.29
+langfuse>=3.0.0
 
 # RAG
 lancedb>=0.17.0
