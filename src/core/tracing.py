@@ -1,7 +1,6 @@
 """Optional Langfuse tracing for LangGraph invokes.
 
-Langfuse is an external service (typically Docker on localhost). When tracing is
-disabled or misconfigured, invokes proceed unchanged.
+When tracing is disabled or misconfigured, invokes proceed unchanged.
 """
 
 from __future__ import annotations
@@ -52,7 +51,7 @@ def build_trace_setup(
     run_name: str,
     tags: list[str] | None = None,
 ) -> TraceSetup:
-    """Build invoke config; never raises — soft-disables tracing on failure."""
+    """Build invoke config; soft-disables tracing on failure instead of raising."""
     base = _base_config(thread_id)
     if not enabled:
         return TraceSetup(config=base)
@@ -89,7 +88,7 @@ def build_trace_setup(
                     "continuing without traces."
                 ),
             )
-    except Exception as exc:  # noqa: BLE001 — soft-fail tracing
+    except Exception as exc:  # noqa: BLE001
         return TraceSetup(
             config=base,
             warning=(
@@ -151,5 +150,5 @@ def traced_invoke(
         if callable(flush):
             try:
                 flush()
-            except Exception:  # noqa: BLE001, S110 — best-effort flush
+            except Exception:  # noqa: BLE001, S110
                 pass

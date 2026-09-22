@@ -1,4 +1,4 @@
-# Prefer 3.12/3.11 — Streamlit/wheels often fail on 3.14
+# Prefer 3.12/3.11; Streamlit/wheels often fail on 3.14
 PYTHON ?= $(shell command -v python3.12 || command -v python3.11 || command -v python3)
 VENV ?= .venv
 BIN := $(VENV)/bin

@@ -1,4 +1,4 @@
-"""Streamlit UI for Local Agentic PR Pre-flight."""
+"""Streamlit UI for Agentic Local Pre-flight Reviewer."""
 
 from __future__ import annotations
 
@@ -17,12 +17,12 @@ from src.core.llm import OllamaUnavailableError, check_ollama_reachable
 from src.rag.indexer import index_repository
 
 st.set_page_config(
-    page_title="PR Pre-flight Local",
+    page_title="Agentic Local Pre-flight Reviewer",
     page_icon=":mag:",
     layout="wide",
 )
 
-st.title("Local Agentic PR Pre-flight")
+st.title("Agentic Local Pre-flight Reviewer")
 st.caption(
     f"Ollama · {config.OLLAMA_CHAT_MODEL} · embeddings {config.OLLAMA_EMBED_MODEL}"
 )
@@ -58,8 +58,8 @@ with st.sidebar:
         key="langfuse_toggle",
         disabled=not langfuse_ready,
         help=(
-            "Send LangGraph / LLM spans to a Langfuse instance (usually "
-            "Docker on localhost). Sticky for Approve/Reject of the same audit."
+            "Send LangGraph / LLM spans to Langfuse "
+            "(typically Docker on localhost). Applies to Approve/Reject of the same audit."
         ),
     )
     if not langfuse_ready:
@@ -125,7 +125,7 @@ with col_run:
         else:
             try:
                 thread_id = new_thread_id()
-                # Sticky for HITL: Approve/Reject uses the same tracing choice.
+                # Keep the same Langfuse choice for Approve/Reject of this audit.
                 st.session_state.langfuse_trace_run = bool(
                     st.session_state.langfuse_toggle and langfuse_ready
                 )
@@ -152,7 +152,7 @@ with col_run:
                         )
                     if awaiting:
                         status.update(
-                            label="Audit ready — awaiting approval",
+                            label="Audit ready: awaiting approval",
                             state="complete",
                         )
                     else:

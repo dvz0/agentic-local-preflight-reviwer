@@ -1,1 +1,1 @@
-"""Local Agentic PR Pre-flight auditor."""
+"""Agentic Local Pre-flight Reviewer."""

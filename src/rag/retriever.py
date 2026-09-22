@@ -14,12 +14,12 @@ def _open_table():
     if not config.LANCEDB_PATH.exists():
         raise FileNotFoundError(
             f"LanceDB not found at {config.LANCEDB_PATH}. "
-            "Use the «Index Repo» button before auditing."
+            "Use the Index Repo button before auditing."
         )
     db = lancedb.connect(str(config.LANCEDB_PATH))
     if config.LANCEDB_TABLE not in db.table_names():
         raise FileNotFoundError(
-            f"Table «{config.LANCEDB_TABLE}» not found. Index the repository first."
+            f"Table '{config.LANCEDB_TABLE}' not found. Index the repository first."
         )
     return db.open_table(config.LANCEDB_TABLE)
 

@@ -40,13 +40,13 @@ CHUNK_SIZE = _int("CHUNK_SIZE", 1500)
 CHUNK_OVERLAP = _int("CHUNK_OVERLAP", 150)
 RAG_TOP_K = _int("RAG_TOP_K", 4)
 
-# Keep prompts inside the model context window (7B defaults are often ~8k–32k tokens).
+# Prompt size caps for the model context window.
 OLLAMA_NUM_CTX = _int("OLLAMA_NUM_CTX", 16384)
 MAX_DIFF_CHARS = _int("MAX_DIFF_CHARS", 6000)
 MAX_RAG_CHARS = _int("MAX_RAG_CHARS", 8000)
 MAX_CONSOLIDATOR_CHARS = _int("MAX_CONSOLIDATOR_CHARS", 12000)
 
-# Optional Langfuse tracing (self-hosted or cloud). Off by default.
+# Optional Langfuse tracing; off by default.
 LANGFUSE_ENABLED = _bool("LANGFUSE_ENABLED", False)
 LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "").strip()
 LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "").strip()

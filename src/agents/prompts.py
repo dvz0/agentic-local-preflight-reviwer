@@ -31,7 +31,7 @@ If there are no findings, findings and proposed_patches must be [].
 unified_diff values MUST be valid unified diffs for `git apply`:
 - Copy context lines EXACTLY from the provided diff (including comments).
 - Prefer one small patch that removes or fixes the issue; do not invent files.
-- Do not invent tests for secrets that should simply be removed.
+- Do not invent tests for secrets that should be removed.
 """
 
 QUALITY_SYSTEM = """You are a senior Python code-quality agent.
@@ -93,7 +93,7 @@ Respond ONLY with valid JSON (no markdown) in this shape:
 }
 If there are no findings, findings and proposed_patches must be [].
 unified_diff MUST be valid for `git apply`: copy context EXACTLY from the diff.
-Do not invent test files for secrets that should simply be removed; omit patches if unsure.
+Do not invent test files for secrets that should be removed; omit patches if unsure.
 """
 
 CONSOLIDATOR_SYSTEM = """You are the consolidator for a multi-agent Python PR review.

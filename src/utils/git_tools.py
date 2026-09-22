@@ -46,7 +46,7 @@ def get_diff_and_files(
         return staged, _abs_paths(root, files)
 
     unstaged = repo.git.diff(unified=3)
-    # Cap untracked files so a brand-new repo does not dump every .py into the prompt.
+    # Cap untracked .py so a fresh repo does not flood the prompt.
     untracked = [p for p in repo.untracked_files if p.endswith(".py")][:8]
     if unstaged.strip() or untracked:
         files = _diff_name_only(repo, cached=False) if unstaged.strip() else []
@@ -57,7 +57,6 @@ def get_diff_and_files(
                 content = path.read_text(encoding="utf-8")
             except OSError:
                 continue
-            # Truncate huge new files in the synthetic diff.
             if len(content) > 4000:
                 content = content[:4000] + "\n# ... truncated ...\n"
             extra += _as_added_diff(rel, content)
@@ -210,7 +209,7 @@ def validate_proposed_fixes(
         try:
             normalized = normalize_fix(repo_path, fix)
             check_unified_diff(repo_path, normalized["unified_diff"])
-        except Exception as exc:  # noqa: BLE001 — surface reason to UI
+        except Exception as exc:  # noqa: BLE001
             rejected.append(f"{label}: {exc}")
             continue
         alone_ok.append(normalized)
@@ -321,7 +320,6 @@ def replace_unique(content: str, old: str, new: str) -> str:
     old_n = _to_newline(old, nl)
     new_n = _to_newline(new, nl)
 
-    # Prefer exact match; also try without a trailing newline on old.
     candidates = [old_n]
     if old_n.endswith(nl):
         candidates.append(old_n[: -len(nl)])

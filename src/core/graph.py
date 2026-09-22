@@ -128,10 +128,10 @@ def consolidator_node(state: AuditState) -> dict[str, Any]:
             excerpts = file_excerpts_for_prompt(
                 repo_path, paths, max_chars=max(1500, config.MAX_CONSOLIDATOR_CHARS // 4)
             )
-        except Exception:  # noqa: BLE001 — consolidator still works without excerpts
+        except Exception:  # noqa: BLE001
             excerpts = ""
 
-    # Reserve room for the real diff + file contents so fixes can match the tree.
+    # Budget for diff + file contents so proposed fixes can match the tree.
     excerpt_budget = min(len(excerpts), max(1000, config.MAX_CONSOLIDATOR_CHARS // 4))
     diff_budget = min(
         len(git_diff), max(1500, (config.MAX_CONSOLIDATOR_CHARS - excerpt_budget) // 3)
@@ -208,7 +208,7 @@ def consolidator_node(state: AuditState) -> dict[str, Any]:
 
 
 def human_approval_node(state: AuditState) -> dict[str, Any]:
-    """Marker node before interrupt; Streamlit sets user_approved on resume."""
+    """Pause point before apply; Streamlit sets user_approved on resume."""
     return {
         "proposed_fixes": state.get("proposed_fixes") or [],
         "consolidated_report": state.get("consolidated_report") or "",
@@ -232,7 +232,7 @@ def apply_fixes_node(state: AuditState) -> dict[str, Any]:
         try:
             apply_unified_diff(state["repo_path"], diff)
             applied += 1
-        except Exception as exc:  # noqa: BLE001 — surface to UI
+        except Exception as exc:  # noqa: BLE001
             errors.append(f"{fix.get('file', '?')}: {exc}")
 
     if errors:
@@ -267,11 +267,9 @@ def build_graph():
         _route_after_diff,
         {"retrieve": "retrieve_context_node", "end": END},
     )
-    # Fan-out
     graph.add_edge("retrieve_context_node", "security_agent")
     graph.add_edge("retrieve_context_node", "quality_agent")
     graph.add_edge("retrieve_context_node", "test_agent")
-    # Fan-in
     graph.add_edge("security_agent", "consolidator_node")
     graph.add_edge("quality_agent", "consolidator_node")
     graph.add_edge("test_agent", "consolidator_node")
