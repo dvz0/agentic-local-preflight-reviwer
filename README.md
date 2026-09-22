@@ -9,7 +9,7 @@
 ![LanceDB](https://img.shields.io/badge/RAG-LanceDB-22B8CF)
 ![Ruff](https://img.shields.io/badge/lint-Ruff-261230?logo=ruff&logoColor=white)
 
-Local PR review with RAG (LanceDB), LangGraph agents, and human approval in Streamlit. LLMs run via Ollama on the host.
+Local pre-flight review of Git changes with RAG (LanceDB), LangGraph agents, and human approval in Streamlit. LLMs run via Ollama on the host.
 
 ## Requirements
 
